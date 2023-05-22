@@ -80,10 +80,11 @@ module Memory(
 				FETCH1 : d_nextStateM <= FETCH2;
 				FETCH2 : d_nextStateM <= FETCH3;
 				FETCH3 : d_nextStateM <= (d_writeM)? STORE0 : RESET; // d_writeM = 1 -> move to STORE9
-				STORE0 : d_nextStateM <= STORE1;
-				STORE1 : d_nextStateM <= STORE2;
-				STORE2 : d_nextStateM <= STORE3;
-				STORE3 : d_nextStateM <= (d_readM)? FETCH0 : RESET; // d_readM = 1 -> move to FETCH0
+				STORE0 : d_nextStateM <= (d_writeM)? STORE0 : STORE1;
+				STORE1 : d_nextStateM <= (d_writeM)? STORE0 :STORE2;
+				STORE2 : d_nextStateM <= (d_writeM)? STORE0 : STORE3;
+				STORE3 : d_nextStateM <= (d_writeM)? STORE0 : 
+										 (d_readM)? FETCH0 : RESET; // d_readM = 1 -> move to FETCH0
 			endcase
 		end
 	end

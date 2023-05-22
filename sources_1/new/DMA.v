@@ -44,8 +44,8 @@ module DMA (
     assign addr = (BG)? dma_outputAddr : `WORD_SIZE'dz;
     assign data = (BG)? dma_outputData : `FETCH_SIZE'dz;
 
-    assign interrupt = BG;
-    assign WRITE = BG;
+    assign interrupt = (dma_counter == 4'd11);
+    assign WRITE = BG && (dma_counter == 4'd0 || dma_counter == 4'd4 || dma_counter == 4'd8);
 
     always @(posedge CLK) begin
         if (BG) begin

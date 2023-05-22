@@ -333,6 +333,7 @@ module cache(
 					next_d_accessCnt <= d_accessCnt;
 				end
 				READ_M1 : begin
+					d_readM <= 1'd0;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
@@ -341,7 +342,6 @@ module cache(
 					next_d_accessCnt <= d_accessCnt;
 				end
 				READ_M3 : begin
-					d_readM <= 1'd0;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
@@ -363,6 +363,7 @@ module cache(
 					next_d_accessCnt <= d_accessCnt;
 				end
 				WRITE_M1 : begin
+					d_writeM <= 1'd0;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
@@ -372,7 +373,6 @@ module cache(
 				end
 				WRITE_M3 : begin
 					d_outputDataM <= d_dataBank[d_idx]; // transfer data to memory
-					d_writeM <= 1'd0;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end

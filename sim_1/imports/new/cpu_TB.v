@@ -35,7 +35,7 @@ module cpu_TB();
 	wire dma_WRITE; // memory write signal from DMA
 	wire [`WORD_SIZE - 1 : 0] dma_addr; // address bus of DMA
 	wire [`WORD_SIZE * 4 - 1 : 0] dma_data; // data bus of DMA
-	wire [1:0] dma_offset; // 
+	wire [1:0] dma_offset; 
 	wire dma_end_int;
 	wire dma_start_int; 
 
@@ -60,8 +60,8 @@ module cpu_TB();
 
 	// instantiate the unit under test
 	cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, output_port, is_halted,
-		.DMA_begin(dma_start_int),
-		.DMA_end(dma_end_int),
+		.dma_begin(dma_start_int),
+		.dma_end(dma_end_int),
 		.BG(BG),
 		.BR(BR),
 		.cmd(cmd)

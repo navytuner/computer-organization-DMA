@@ -25,8 +25,8 @@ module cpu(
     output is_halted,
 
 	// for DMA implementation
-	input DMA_begin,
-	input DMA_end,
+	input dma_begin,
+	input dma_end,
 	output BG,
 	input BR,
 	output cmd
@@ -46,10 +46,18 @@ module cpu(
 	wire [1:0] RegDst; // RF address to write data. 0: rt, 1: rd, 2: $2
 	wire [3:0] ALUOp; // opcode for ALU. It's defined at opcodes.v
 	wire [1:0] ALUSrcB; // select 2nd source of ALU. 0: RF_B, 1: sign_immediate, 2: LHI_immediate
-	wire d_writeM; // write signal to data mermory interface
-	wire d_readM; // read signal to data memory interface
+	wire d_writeM_cache; // write signal to data mermory interface
+	wire d_readM_cache; // read signal to data memory interface
 	wire RegWrite; // write signal to RF
 	wire [1:0] WBSrc; // select data to write back into RF. 0: lwData(LWD), 1: wbData, 2: PC_WB(for JPL, JRL)
+
+	wire [`FETCH_SIZE-1:0] d_dataM;
+	wire [`WORD_SIZE-1:0] d_addressM;
+
+	assign d_writeM = (BR)? 1'd0 : d_writeM_cache;
+	assign d_readM = (BR)? 1'd0 : d_readM_cache;
+	assign d_address = (BR)? `WORD_SIZE'dz : d_addressM;
+	assign d_data = (BR)? `FETCH_SIZE'dz : d_dataM;
 	
 	// control signals from control_unit to hazard_control
 	wire RegWrite_EX; // RegWrite in EX
@@ -251,10 +259,10 @@ module cpu(
 		.i_writeM(i_writeM),
 		.i_addressM(i_address),
 		.i_dataM(i_data),
-		.d_readM(d_readM),
-		.d_writeM(d_writeM),
-		.d_addressM(d_address),
-		.d_dataM(d_data),
+		.d_readM(d_readM_cache),
+		.d_writeM(d_writeM_cache),
+		.d_addressM(d_addressM),
+		.d_dataM(d_dataM),
 		.i_cache_hit(i_cache_hit),
 		.d_cache_hit(d_cache_hit),
 		.i_ready(i_ready),
