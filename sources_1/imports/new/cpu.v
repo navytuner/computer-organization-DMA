@@ -27,13 +27,26 @@ module cpu(
 	// for DMA implementation
 	input dma_begin,
 	input dma_end,
-	output BG,
+	output reg BG,
 	input BR,
 	output cmd
 );
 	// DMA
+	reg previous_BG;
 	assign cmd = DMA_begin;
-	assign BG = BR;
+
+	always @(posedge Clk, negedge Reset_N) begin
+		if (!Reset_N) previous_BG <= 1'd0;
+		else previous_BG <= BG;
+	end
+
+	always @(*) begin
+		if (!Reset_N) BG <= 1'd0;
+		else begin
+			if (!previous_BG && BR) BG <= 1'd1;
+			else if (previous_BG && !BR) BG <= 1'd0;
+		end
+	end
 
     // TODO : Implement your pipelined CPU!
 	// control signal declaration
@@ -54,8 +67,8 @@ module cpu(
 	wire [`FETCH_SIZE-1:0] d_dataM;
 	wire [`WORD_SIZE-1:0] d_addressM;
 
-	assign d_writeM = (BR)? 1'd0 : d_writeM_cache;
-	assign d_readM = (BR)? 1'd0 : d_readM_cache;
+	assign d_writeM = (BR)? 1'dz : d_writeM_cache;
+	assign d_readM = (BR)? 1'dz : d_readM_cache;
 	assign d_address = (BR)? `WORD_SIZE'dz : d_addressM;
 	assign d_data = (BR)? `FETCH_SIZE'dz : d_dataM;
 	
@@ -268,7 +281,9 @@ module cpu(
 		.i_ready(i_ready),
 		.d_ready(d_ready),
 		.both_access(both_access),
-		.EXWrite(EXWrite)
+		.EXWrite(EXWrite),
+		.BR(BR),
+		.dma_end(dma_end)
 	);
 
 endmodule
