@@ -29,22 +29,43 @@ module cpu_TB();
 
 	// new wires for DMA
 	wire BG; // bus granted
-	wire cmd; // 
-	wire BR;
-	wire [4 * `WORD_SIZE - 1 : 0] edata;
-	wire dma_WRITE;
-	wire [`WORD_SIZE - 1 : 0] dma_addr;
-	wire [`WORD_SIZE * 4 - 1 : 0] dma_data;
-	wire [1:0] dma_offset;
+	wire BR; // bus request
+	wire cmd; // command from cpu to DMA
+	wire [4 * `WORD_SIZE - 1 : 0] edata; // 
+	wire dma_WRITE; // memory write signal from DMA
+	wire [`WORD_SIZE - 1 : 0] dma_addr; // address bus of DMA
+	wire [`WORD_SIZE * 4 - 1 : 0] dma_data; // data bus of DMA
+	wire [1:0] dma_offset; // 
 	wire dma_end_int;
-	wire dma_start_int;
+	wire dma_start_int; 
 
-	DMA DMA(.CLK(CLK), .BG(BG),  .edata(edata), .cmd(cmd), .BR(BR), .WRITE(dma_WRITE),
-		.addr(dma_addr), .data(dma_data), .offset(dma_offset), .interrupt(dma_end_int));
-	external_device edevice(.offset(offset), .interrupt(dma_start_int), .data(edata));
+	DMA DMA(
+		.CLK(clk),
+		.BG(BG),
+		.edata(edata),
+		.cmd(cmd),
+		.BR(BR),
+		.WRITE(dma_WRITE),
+		.addr(dma_addr),
+		.data(dma_data),
+		.offset(dma_offset),
+		.interrupt(dma_end_int)
+		);
+		
+	external_device edevice(
+		.offset(offset),
+		.interrupt(dma_start_int),
+		.data(edata)
+		);
 
 	// instantiate the unit under test
-	cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, output_port, is_halted);
+	cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, output_port, is_halted,
+		.DMA_begin(dma_start_int),
+		.DMA_end(dma_end_int),
+		.BG(BG),
+		.BR(BR),
+		.cmd(cmd)
+		);
 	Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);		   
 
 	// initialize inputs
