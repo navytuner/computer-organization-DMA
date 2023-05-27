@@ -50,7 +50,7 @@ module cpu_TB();
 		);
 		
 	external_device edevice(
-		.offset(offset),
+		.offset(dma_offset),
 		.interrupt(dma_begin),
 		.data(edata)
 		);

@@ -32,6 +32,22 @@ module Memory(
 	parameter STORE2 = 4'h7;
 	parameter STORE3 = 4'h8;
 
+	// wire for DMA debugging
+	wire [`WORD_SIZE-1:0] dma_data [11:0];
+	assign dma_data[11] = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd11];
+	assign dma_data[10] = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd10];
+	assign dma_data[9]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd9];
+	assign dma_data[8]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd8];
+	assign dma_data[7]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd7];
+	assign dma_data[6]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd6];
+	assign dma_data[5]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd5];
+	assign dma_data[4]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd4];
+	assign dma_data[3]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd3];
+	assign dma_data[2]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd2];
+	assign dma_data[1]  = memory[`WORD_SIZE'h01f4+`WORD_SIZE'd1];
+	assign dma_data[0]  = memory[`WORD_SIZE'h01f4];
+
+
 	// state register
 	// I-memory
 	reg [3:0] i_stateM;
@@ -79,11 +95,11 @@ module Memory(
 				FETCH0 : d_nextStateM <= FETCH1;
 				FETCH1 : d_nextStateM <= FETCH2;
 				FETCH2 : d_nextStateM <= FETCH3;
-				FETCH3 : d_nextStateM <= (d_writeM)? STORE0 : RESET; // d_writeM = 1 -> move to STORE9
-				STORE0 : d_nextStateM <= (d_writeM)? STORE0 : STORE1;
-				STORE1 : d_nextStateM <= (d_writeM)? STORE0 :STORE2;
-				STORE2 : d_nextStateM <= (d_writeM)? STORE0 : STORE3;
-				STORE3 : d_nextStateM <= (d_writeM)? STORE0 : 
+				FETCH3 : d_nextStateM <= (d_writeM===1)? STORE0 : RESET; // d_writeM = 1 -> move to STORE9
+				STORE0 : d_nextStateM <= (d_writeM===1)? STORE0 : STORE1;
+				STORE1 : d_nextStateM <= (d_writeM===1)? STORE0 :STORE2;
+				STORE2 : d_nextStateM <= (d_writeM===1)? STORE0 : STORE3;
+				STORE3 : d_nextStateM <= (d_writeM===1)? STORE0 : 
 										 (d_readM)? FETCH0 : RESET; // d_readM = 1 -> move to FETCH0
 			endcase
 		end

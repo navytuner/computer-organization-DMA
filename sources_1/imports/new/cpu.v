@@ -32,30 +32,24 @@ module cpu(
 	output cmd
 );
 	// DMA
-	reg previous_BG;
 	reg [3:0] dma_counter; // 0~11 counter
 	assign cmd = dma_begin;
 
 	// dma count
-	always @(posedge Clk, negedge Reset_N) begin
-		if (!Reset_N) dma_counter <= 4'd0;
+	always @(posedge Clk) begin
+		if (BR && !BG) dma_counter <= 4'd0;
 		else begin
-			if (BG) dma_counter <= (dma_counter==4'd11)? 4'd0 : dma_counter + 4'd1;
-			else dma_counter <= 4'd0;
+			if (BG) dma_counter <= dma_counter + 4'd1;
+			else dma_counter <= 4'd12;
 		end
     end  
 
 	// grant bus
 	always @(posedge Clk, negedge Reset_N) begin
-		if (!Reset_N) previous_BG <= 1'd0;
-		else previous_BG <= BG;
-	end
-	always @(*) begin
 		if (!Reset_N) BG <= 1'd0;
 		else begin
-			if (!previous_BG && BR) BG <= 1'd1;
-			else if (previous_BG && !BR) BG <= 1'd0;
-			else BG <= BG;
+			if (BR && dma_counter == 4'd12) BG <= 1'd1;
+			else if (dma_counter == 4'd11) BG <= 1'd0;
 		end
 	end
 
@@ -70,19 +64,9 @@ module cpu(
 	wire [1:0] RegDst; // RF address to write data. 0: rt, 1: rd, 2: $2
 	wire [3:0] ALUOp; // opcode for ALU. It's defined at opcodes.v
 	wire [1:0] ALUSrcB; // select 2nd source of ALU. 0: RF_B, 1: sign_immediate, 2: LHI_immediate
-	wire d_writeM_cache; // write signal to data mermory interface
-	wire d_readM_cache; // read signal to data memory interface
 	wire RegWrite; // write signal to RF
 	wire [1:0] WBSrc; // select data to write back into RF. 0: lwData(LWD), 1: wbData, 2: PC_WB(for JPL, JRL)
 
-	wire [`FETCH_SIZE-1:0] d_dataM;
-	wire [`WORD_SIZE-1:0] d_addressM;
-
-	assign d_writeM = (BR)? 1'dz : d_writeM_cache;
-	assign d_readM = (BR)? 1'dz : d_readM_cache;
-	assign d_address = (BR)? `WORD_SIZE'dz : d_addressM;
-	assign d_data = (BR)? `FETCH_SIZE'dz : d_dataM;
-	
 	// control signals from control_unit to hazard_control
 	wire RegWrite_EX; // RegWrite in EX
 	wire RegWrite_M; // RegWrite in MEM
@@ -286,10 +270,10 @@ module cpu(
 		.i_writeM(i_writeM),
 		.i_addressM(i_address),
 		.i_dataM(i_data),
-		.d_readM(d_readM_cache),
-		.d_writeM(d_writeM_cache),
-		.d_addressM(d_addressM),
-		.d_dataM(d_dataM),
+		.d_readM(d_readM),
+		.d_writeM(d_writeM),
+		.d_addressM(d_address),
+		.d_dataM(d_data),
 		.i_cache_hit(i_cache_hit),
 		.d_cache_hit(d_cache_hit),
 		.i_ready(i_ready),

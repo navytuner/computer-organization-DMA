@@ -39,7 +39,8 @@ module cache(
 	input both_access, // indicator of the case that there is both I-cache and D-cache access
 	input EXWrite, // EXWrite signal from hazard_control to count cache access
 	input BR,
-	input dma_end // DMA end signal from datapath
+	input dma_end, // DMA end signal from datapath
+	input [3:0] dma_counter
 );
 	reg [`WORD_SIZE-1:0] i_hitCnt; // counter for I-cache hit
 	reg [`WORD_SIZE-1:0] d_hitCnt; // counter for D-cache hit
@@ -286,6 +287,12 @@ module cache(
 				end
 			endcase
 
+			if (dma_counter != 4'd12) begin
+				d_writeM <= 1'dz;
+				d_readM <= 1'dz;
+				d_addressM_reg <= `WORD_SIZE'dz;
+				d_outputDataM <= `FETCH_SIZE'dz;
+			end
 			case (d_state)
 				RESET : begin
 					{d_readM, d_writeM} <= 2'b00;

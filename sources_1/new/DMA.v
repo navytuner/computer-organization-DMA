@@ -21,12 +21,12 @@ module DMA (
     input BG,
     input [4 * `WORD_SIZE - 1 : 0] edata,
     input cmd,
-    output reg BR = 1'd0, 
+    output reg BR, 
     output WRITE,
     output [`WORD_SIZE - 1 : 0] addr, 
     output [4 * `WORD_SIZE - 1 : 0] data,
-    output reg [1:0] offset = 2'd0,
-    output reg interrupt = 1'd0
+    output reg [1:0] offset,
+    output reg interrupt
     );
 
     /* Implement your own logic */
@@ -46,19 +46,18 @@ module DMA (
     assign WRITE = (BG && (dma_counter == 4'd0 || dma_counter == 4'd4 || dma_counter == 4'd8))? 1'd1 : 1'dz;
 
     always @(posedge CLK) begin
-        if (BG) begin
-            dma_outputAddr <= fixedAddr;
-            dma_counter <= (dma_counter == 4'd11)? 4'd0 : dma_counter + 4'd1;
+        if (BR && !BG) begin
+            dma_counter <= 4'd0;
         end
         else begin
-            dma_outputAddr <= `WORD_SIZE'dz;
-            dma_counter <= 4'd0;
+            if (BG) dma_counter <= dma_counter + 4'd1;
+            else dma_counter <= 4'd12;
         end
     end
 
     always @(posedge CLK) begin
         case(dma_counter)
-            4'd0 : begin
+            4'd12 : begin
                 offset <= 2'd0;
                 interrupt <= 1'd0;
             end
@@ -73,15 +72,24 @@ module DMA (
 
     always @(*) begin
         // bus request
-        if (dma_finish) BR <= 1'd0;
+        if (interrupt || dma_counter == 4'd12 && !cmd) BR <= 1'd0;
         else if (cmd) BR <= 1'd1;
         else BR <= BR;
 
         // output dma data
         case (dma_counter)
-            4'd0 : dma_outputData <= (BG)? edata : `FETCH_SIZE'dz;
-            4'd4 : dma_outputData <= edata;
-            4'd8 : dma_outputData <= edata;
+            4'd0 : begin
+                dma_outputAddr <= fixedAddr;
+                dma_outputData <= edata;
+            end
+            4'd4 : begin
+                dma_outputAddr <= fixedAddr + `WORD_SIZE'd4;
+                dma_outputData <= edata;
+            end
+            4'd8 : begin
+                dma_outputAddr <= fixedAddr + `WORD_SIZE'd8;
+                dma_outputData <= edata;
+            end
         endcase
     end
 endmodule
