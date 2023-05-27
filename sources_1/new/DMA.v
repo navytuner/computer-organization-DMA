@@ -17,16 +17,16 @@
 *************************************************/
 
 module DMA (
-    input CLK, 
-    input BG,
-    input [4 * `WORD_SIZE - 1 : 0] edata,
-    input cmd,
-    output reg BR, 
-    output WRITE,
-    output [`WORD_SIZE - 1 : 0] addr, 
-    output [4 * `WORD_SIZE - 1 : 0] data,
-    output reg [1:0] offset,
-    output reg interrupt
+    input CLK, // clock
+    input BG, // bus granted signal
+    input [4 * `WORD_SIZE - 1 : 0] edata, // data from external device
+    input cmd, // command
+    output reg BR, // bus request signal
+    output WRITE, // memory write signal
+    output [`WORD_SIZE - 1 : 0] addr, // d_memory address
+    output [4 * `WORD_SIZE - 1 : 0] data, // data to write in d_memory
+    output reg [1:0] offset, // offset for fetching data from external device
+    output reg interrupt // dma_end signal
     );
 
     /* Implement your own logic */
@@ -37,14 +37,16 @@ module DMA (
     // DMA counter
     reg [3:0] dma_counter; // 0 ~ 11 counter
 
-
+    // address, data output register
     reg [`WORD_SIZE-1:0] dma_outputAddr;
     reg [`FETCH_SIZE - 1:0] dma_outputData;
+
+    // assign address, data, WRITE according to BG
     assign addr = (BG)? dma_outputAddr : `WORD_SIZE'dz;
     assign data = (BG)? dma_outputData : `FETCH_SIZE'dz;
-
     assign WRITE = (BG && (dma_counter == 4'd0 || dma_counter == 4'd4 || dma_counter == 4'd8))? 1'd1 : 1'dz;
 
+    // update dma_counter
     always @(posedge CLK) begin
         if (BR && !BG) begin
             dma_counter <= 4'd0;
@@ -55,9 +57,11 @@ module DMA (
         end
     end
 
+    // update dma_end(interrupt), offset
     always @(posedge CLK) begin
         case(dma_counter)
             4'd12 : begin
+                // reset
                 offset <= 2'd0;
                 interrupt <= 1'd0;
             end

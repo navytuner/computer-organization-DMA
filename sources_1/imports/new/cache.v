@@ -38,9 +38,8 @@ module cache(
 	output d_ready, // ready signal of D-cache block
 	input both_access, // indicator of the case that there is both I-cache and D-cache access
 	input EXWrite, // EXWrite signal from hazard_control to count cache access
-	input BR,
-	input dma_end, // DMA end signal from datapath
-	input [3:0] dma_counter
+	input BR, // bus request
+	input [3:0] dma_counter // cpu dma counter
 );
 	reg [`WORD_SIZE-1:0] i_hitCnt; // counter for I-cache hit
 	reg [`WORD_SIZE-1:0] d_hitCnt; // counter for D-cache hit

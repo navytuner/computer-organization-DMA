@@ -56,8 +56,7 @@ module hazard_control (
 	output [1:0] forwardSrcB, // 2nd forward source select signal
 	output flush_EX, // signal for EX stage flush
 	input BR, // bus request signal from DMA controller
-	input dma_end, // dma end signal
-	input [3:0] dma_counter
+	input [3:0] dma_counter // cpu DMA counter
 ); 
 	// stage write enable IDWrite
 	reg PCWrite; reg IDWrite; reg EXWrite; reg MWrite; reg WBWrite;
