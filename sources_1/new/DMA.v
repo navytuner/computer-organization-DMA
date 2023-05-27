@@ -26,7 +26,7 @@ module DMA (
     output [`WORD_SIZE - 1 : 0] addr, 
     output [4 * `WORD_SIZE - 1 : 0] data,
     output reg [1:0] offset = 2'd0,
-    output interrupt
+    output reg interrupt = 1'd0
     );
 
     /* Implement your own logic */
@@ -34,9 +34,8 @@ module DMA (
     wire [`WORD_SIZE-1:0] fixedAddr;
     assign fixedAddr = `WORD_SIZE'h01f4;
 
-    // dmaState
+    // DMA counter
     reg [3:0] dma_counter; // 0 ~ 11 counter
-    reg dma_finish = 1'd0;
 
 
     reg [`WORD_SIZE-1:0] dma_outputAddr;
@@ -44,8 +43,7 @@ module DMA (
     assign addr = (BG)? dma_outputAddr : `WORD_SIZE'dz;
     assign data = (BG)? dma_outputData : `FETCH_SIZE'dz;
 
-    assign interrupt = (dma_counter == 4'd11); // or dma_finish
-    assign WRITE = BG && (dma_counter == 4'd0 || dma_counter == 4'd4 || dma_counter == 4'd8);
+    assign WRITE = (BG && (dma_counter == 4'd0 || dma_counter == 4'd4 || dma_counter == 4'd8))? 1'd1 : 1'dz;
 
     always @(posedge CLK) begin
         if (BG) begin
@@ -62,31 +60,30 @@ module DMA (
         case(dma_counter)
             4'd0 : begin
                 offset <= 2'd0;
-                dma_finish <= 1'd0;
+                interrupt <= 1'd0;
             end
             4'd3 : offset <= 2'd1;
             4'd7 : offset <= 2'd2;
             4'd11 : begin
                 offset <= 2'd0;
-                dma_finish <= 1'd1;
+                interrupt <= 1'd1;
             end
         endcase
     end
 
     always @(*) begin
-        BR <= (dma_finish)? 1'd0 : cmd;
+        // bus request
+        if (dma_finish) BR <= 1'd0;
+        else if (cmd) BR <= 1'd1;
+        else BR <= BR;
+
+        // output dma data
         case (dma_counter)
             4'd0 : dma_outputData <= (BG)? edata : `FETCH_SIZE'dz;
             4'd4 : dma_outputData <= edata;
             4'd8 : dma_outputData <= edata;
         endcase
     end
-            
-
-
-
-
-    
 endmodule
 
 

@@ -56,7 +56,8 @@ module hazard_control (
 	output [1:0] forwardSrcB, // 2nd forward source select signal
 	output flush_EX, // signal for EX stage flush
 	input BR, // bus request signal from DMA controller
-	input dma_end // dma end signal
+	input dma_end, // dma end signal
+	input [3:0] dma_counter
 ); 
 	// stage write enable IDWrite
 	reg PCWrite; reg IDWrite; reg EXWrite; reg MWrite; reg WBWrite;
@@ -107,7 +108,7 @@ module hazard_control (
 	always @(*) begin
 		if (!reset_n) next_control_state <= RESET;
 		else begin
-			if (!d_cache_hit && BR && !dma_end) begin
+			if (!d_cache_hit && BR && dma_counter != 4'd11) begin
 				next_control_state <= INTERRUPT;
 			end
 			else begin
@@ -135,7 +136,7 @@ module hazard_control (
 					HAZARD_STALL : next_control_state <= (!d_cache_hit)? ACCESS_D : RESET;
 					BOTH_I_D : next_control_state <= (i_ready && d_ready)? RESET : BOTH_I_D; // both referenced I-cache, D-cache blocks are ready -> move to RESET
 					BOTH_D_I : next_control_state <= (i_ready && d_ready)? RESET : BOTH_D_I; // both referenced I-cache, D-cache blocks are ready -> move to RESET
-					INTERRUPT : next_control_state <= (dma_end)? RESET : INTERRUPT; 
+					INTERRUPT : next_control_state <= (dma_counter == 4'd11)? RESET : INTERRUPT; 
 				endcase
 			end
 		end

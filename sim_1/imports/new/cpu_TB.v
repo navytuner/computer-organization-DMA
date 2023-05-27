@@ -33,8 +33,8 @@ module cpu_TB();
 	wire cmd; // command from cpu to DMA
 	wire [4 * `WORD_SIZE - 1 : 0] edata; // data from external_device
 	wire [1:0] dma_offset; // data offfset from DMA to external_device
-	wire dma_start_int; // dma start signal
-	wire dma_end_int; // dma end signal
+	wire dma_begin; // dma start signal
+	wire dma_end; // dma end signal
 
 	DMA DMA(
 		.CLK(clk),
@@ -46,18 +46,18 @@ module cpu_TB();
 		.addr(d_address),
 		.data(d_data),
 		.offset(dma_offset),
-		.interrupt(dma_end_int)
+		.interrupt(dma_end)
 		);
 		
 	external_device edevice(
 		.offset(offset),
-		.interrupt(dma_start_int),
+		.interrupt(dma_begin),
 		.data(edata)
 		);
 
 	// instantiate the unit under test
 	cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, output_port, is_halted,
-		dma_start_int, dma_end_int, BG, BR, cmd);
+		dma_begin, dma_end, BG, BR, cmd);
 	Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);		   
 
 	// initialize inputs

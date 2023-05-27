@@ -33,13 +33,23 @@ module cpu(
 );
 	// DMA
 	reg previous_BG;
+	reg [3:0] dma_counter; // 0~11 counter
 	assign cmd = dma_begin;
 
+	// dma count
+	always @(posedge Clk, negedge Reset_N) begin
+		if (!Reset_N) dma_counter <= 4'd0;
+		else begin
+			if (BG) dma_counter <= (dma_counter==4'd11)? 4'd0 : dma_counter + 4'd1;
+			else dma_counter <= 4'd0;
+		end
+    end  
+
+	// grant bus
 	always @(posedge Clk, negedge Reset_N) begin
 		if (!Reset_N) previous_BG <= 1'd0;
 		else previous_BG <= BG;
 	end
-
 	always @(*) begin
 		if (!Reset_N) BG <= 1'd0;
 		else begin
@@ -254,7 +264,8 @@ module cpu(
 		.forwardSrcB(forwardSrcB),
 		.flush_EX(flush_EX),
 		.BR(BR),
-		.dma_end(dma_end)
+		.dma_end(dma_end),
+		.dma_counter(dma_counter)
 	);
 
 	// 4. cache : datapath accesses cache instead of accessing memory directly.
@@ -286,7 +297,8 @@ module cpu(
 		.both_access(both_access),
 		.EXWrite(EXWrite),
 		.BR(BR),
-		.dma_end(dma_end)
+		.dma_end(dma_end),
+		.dma_counter(dma_counter)
 	);
 
 endmodule

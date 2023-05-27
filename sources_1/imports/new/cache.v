@@ -140,7 +140,7 @@ module cache(
 				end
 			endcase
 			// update d_nextState
-			if (!d_cache_hit && BR && !dma_end) begin
+			if (!d_cache_hit && BR && dma_counter != 4'd11) begin
 				d_nextState <= INTERRUPT;
 			end
 			else begin
@@ -160,7 +160,7 @@ module cache(
 					READ_M3 : d_nextState <= (d_readC)? FETCH_READY : WRITE_READY;
 					FETCH_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET)? FETCH_READY : RESET; // wait until I-cache access is done
 					WRITE_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET)? WRITE_READY : RESET; // wait until I-cache access is done
-					INTERRUPT : d_nextState <= (dma_end)? RESET : INTERRUPT;
+					INTERRUPT : d_nextState <= (dma_counter == 4'd11)? RESET : INTERRUPT;
 				endcase
 			end
 		end
@@ -392,10 +392,10 @@ module cache(
 					next_d_accessCnt <= d_accessCnt;
 				end
 				INTERRUPT : begin
-					// d_writeM <= 1'dz;
-					// d_readM <= 1'dz;
-					// d_addressM_reg <= `WORD_SIZE'dz;
-					// d_outputDataM <= `FETCH_SIZE'dz;
+					d_writeM <= 1'dz;
+					d_readM <= 1'dz;
+					d_addressM_reg <= `WORD_SIZE'dz;
+					d_outputDataM <= `FETCH_SIZE'dz;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
