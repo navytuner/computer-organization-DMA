@@ -35,7 +35,8 @@ module DMA (
     assign fixedAddr = `WORD_SIZE'h01f4;
 
     // DMA counter
-    reg [3:0] dma_counter; // 0 ~ 11 counter
+    reg [3:0] dma_state; // 0 ~ 11 counter
+    reg [3:0] next_dma_state;
 
     // address, data output register
     reg [`WORD_SIZE-1:0] dma_outputAddr;
@@ -44,23 +45,34 @@ module DMA (
     // assign address, data, WRITE according to BG
     assign addr = (BG)? dma_outputAddr : `WORD_SIZE'dz;
     assign data = (BG)? dma_outputData : `FETCH_SIZE'dz;
-    assign WRITE = (BG && (dma_counter == 4'd0 || dma_counter == 4'd4 || dma_counter == 4'd8))? 1'd1 : 1'dz;
-
-    // update dma_counter
-    always @(posedge CLK) begin
-        if (BR && !BG) begin
-            dma_counter <= 4'd0;
+    assign WRITE = (BG && (dma_state == 4'd0 || dma_state == 4'd4 || dma_state == 4'd8))? 1'd1 : 1'dz;
+    
+    // update next_dma_state
+    always @(*) begin
+        if (BG) begin
+            if (dma_state == 4'd0) begin
+                next_dma_state <= 4'd1;
+            end
+            else if (dma_state == 4'd11) begin
+                next_dma_state <= 4'd0;
+            end
+            else begin
+                next_dma_state <= dma_state + 4'd1;
+            end
         end
         else begin
-            if (BG) dma_counter <= dma_counter + 4'd1;
-            else dma_counter <= 4'd12;
+            next_dma_state <= 4'd0;
         end
+    end
+    // update dma_state
+    always @(posedge CLK) begin
+        dma_state <= next_dma_state;
     end
 
     // update dma_end(interrupt), offset
     always @(posedge CLK) begin
-        case(dma_counter)
-            4'd12 : begin
+        case(dma_state)
+            4'd0 : begin
                 // reset
                 offset <= 2'd0;
                 interrupt <= 1'd0;
@@ -76,12 +88,12 @@ module DMA (
 
     always @(*) begin
         // bus request
-        if (interrupt || dma_counter == 4'd12 && !cmd) BR <= 1'd0;
+        if (interrupt || (dma_state == 4'd0 && !cmd)) BR <= 1'd0;
         else if (cmd) BR <= 1'd1;
         else BR <= BR;
 
         // output dma data
-        case (dma_counter)
+        case (dma_state)
             4'd0 : begin
                 dma_outputAddr <= fixedAddr;
                 dma_outputData <= edata;
