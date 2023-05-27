@@ -33,7 +33,7 @@ module cpu(
 );
 	// DMA
 	reg previous_BG;
-	assign cmd = DMA_begin;
+	assign cmd = dma_begin;
 
 	always @(posedge Clk, negedge Reset_N) begin
 		if (!Reset_N) previous_BG <= 1'd0;
@@ -45,6 +45,7 @@ module cpu(
 		else begin
 			if (!previous_BG && BR) BG <= 1'd1;
 			else if (previous_BG && !BR) BG <= 1'd0;
+			else BG <= BG;
 		end
 	end
 
@@ -251,7 +252,9 @@ module cpu(
 		.isPredict(isPredict),
 		.forwardSrcA(forwardSrcA),
 		.forwardSrcB(forwardSrcB),
-		.flush_EX(flush_EX)
+		.flush_EX(flush_EX),
+		.BR(BR),
+		.dma_end(dma_end)
 	);
 
 	// 4. cache : datapath accesses cache instead of accessing memory directly.

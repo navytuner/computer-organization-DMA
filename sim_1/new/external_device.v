@@ -24,34 +24,34 @@ module external_device(
         /* Randomized storage initialization.  
         * You may want to change these for the
         * debugging */
-       storage[0] <= $random;
-       storage[1] <= $random;
-       storage[2] <= $random;
+        storage[0] <= $random;
+        storage[1] <= $random;
+        storage[2] <= $random;
 
-       interrupt <= 0;
+        interrupt <= 0;
 
-       /* Fire interrupt. You may want to change */
-       #(`FIRE_TIME);
-       interrupt <=  1;
-       /* Interrupt duration. You may want to change */
-       #(`INTTERRUPT_DURATION);
-       interrupt <=  0;
+        /* Fire interrupt. You may want to change */
+        #(`FIRE_TIME);
+        interrupt <=  1;
+        /* Interrupt duration. You may want to change */
+        #(`INTTERRUPT_DURATION);
+        interrupt <=  0;
 
-       /* Randomized storage initialization.  
-       * You may want to change these for the
-       * debugging */
-      storage[0] <= $random;
-      storage[1] <= $random;
-      storage[2] <= $random;
+        /* Randomized storage initialization.  
+        * You may want to change these for the
+        * debugging */
+        storage[0] <= $random;
+        storage[1] <= $random;
+        storage[2] <= $random;
 
-       /* Another interrupt. You may want to change */
-      #(`FIRE_TIME);
-      interrupt <=  1;
-       /* Interrupt duration. You may want to change */
-      #(`INTTERRUPT_DURATION);
-      interrupt <=  0;
-      
-      $finish;
+        /* Another interrupt. You may want to change */
+        #(`FIRE_TIME);
+        interrupt <=  1;
+        /* Interrupt duration. You may want to change */
+        #(`INTTERRUPT_DURATION);
+        interrupt <=  0;
+        
+      // $finish;
   end
 
   /* Data to be send */

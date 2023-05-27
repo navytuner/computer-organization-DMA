@@ -140,27 +140,29 @@ module cache(
 				end
 			endcase
 			// update d_nextState
-			case (d_state)
-				RESET : begin
-					if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : WRITE_M0; // D-cache miss & dirty -> move to WRITE_M0
-					else if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && !d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : READ_M0; // D-cache miss & not dirty -> move to REAAD_M0
-					else d_nextState <= RESET; // cache hit -> no access memory 
-				end
-				WRITE_M0 : d_nextState <= (BR)? INTERRUPT : WRITE_M1;
-				WRITE_M1 : d_nextState <= (BR)? INTERRUPT : WRITE_M2;
-				WRITE_M2 : d_nextState <= (BR)? INTERRUPT : WRITE_M3;
-				WRITE_M3 : d_nextState <= (BR)? INTERRUPT : READ_M0;
-				READ_M0 : d_nextState <= (BR)? INTERRUPT : READ_M1;
-				READ_M1 : d_nextState <= (BR)? INTERRUPT : READ_M2;
-				READ_M2 : d_nextState <= (BR)? INTERRUPT : READ_M3;
-				READ_M3 : d_nextState <= (BR)? INTERRUPT :
-										 (d_readC)? FETCH_READY : WRITE_READY;
-				FETCH_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET && BR)? INTERRUPT :
-											 (i_state != FETCH_READY && i_state != RESET)? FETCH_READY : RESET; // wait until I-cache access is done
-				WRITE_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET && BR)? INTERRUPT :
-											 (i_state != FETCH_READY && i_state != RESET)? WRITE_READY : RESET; // wait until I-cache access is done
-				INTERRUPT : d_nextState <= (dma_end)? RESET : INTERRUPT;
-			endcase
+			if (!d_cache_hit && BR && !dma_end) begin
+				d_nextState <= INTERRUPT;
+			end
+			else begin
+				case (d_state)
+					RESET : begin
+						if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : WRITE_M0; // D-cache miss & dirty -> move to WRITE_M0
+						else if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && !d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : READ_M0; // D-cache miss & not dirty -> move to REAAD_M0
+						else d_nextState <= RESET; // cache hit -> no access memory 
+					end
+					WRITE_M0 : d_nextState <= WRITE_M1;
+					WRITE_M1 : d_nextState <= WRITE_M2;
+					WRITE_M2 : d_nextState <= WRITE_M3;
+					WRITE_M3 : d_nextState <= READ_M0;
+					READ_M0 : d_nextState <= READ_M1;
+					READ_M1 : d_nextState <= READ_M2;
+					READ_M2 : d_nextState <= READ_M3;
+					READ_M3 : d_nextState <= (d_readC)? FETCH_READY : WRITE_READY;
+					FETCH_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET)? FETCH_READY : RESET; // wait until I-cache access is done
+					WRITE_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET)? WRITE_READY : RESET; // wait until I-cache access is done
+					INTERRUPT : d_nextState <= (dma_end)? RESET : INTERRUPT;
+				endcase
+			end
 		end
 	end
 

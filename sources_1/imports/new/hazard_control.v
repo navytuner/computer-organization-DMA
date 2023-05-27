@@ -54,7 +54,10 @@ module hazard_control (
 	// control signal for forwarding
 	output [1:0] forwardSrcA, // 1st forward source select signal
 	output [1:0] forwardSrcB, // 2nd forward source select signal
-	output flush_EX // signal for EX stage flush
+	output flush_EX, // signal for EX stage flush
+
+	input BR, // bus request signal from DMA controller
+	input dma_end // dma end signal
 ); 
 	// stage write enable IDWrite
 	reg PCWrite; reg IDWrite; reg EXWrite; reg MWrite; reg WBWrite;
@@ -73,6 +76,7 @@ module hazard_control (
 	parameter HAZARD_STALL = 3'd3;
 	parameter BOTH_I_D = 3'd4;
 	parameter BOTH_D_I = 3'd5;
+	parameter INTERRUPT = 3'd6;
 	reg [2:0] control_state;
 	reg [2:0] next_control_state;
 
@@ -104,31 +108,37 @@ module hazard_control (
 	always @(*) begin
 		if (!reset_n) next_control_state <= RESET;
 		else begin
-			case(control_state)
-				RESET : begin
-					if (LWD_dependence_hazard) next_control_state <= HAZARD_STALL;
-					else begin
-						casex ({d_cache_hit, i_cache_hit})
-							2'b0x : next_control_state <= ACCESS_D; // D-cache miss 
-							2'b10 : next_control_state <= (LWD_dependence_hazard)? HAZARD_STALL : ACCESS_I; // I-cache miss
-							2'b11 : next_control_state <= (LWD_dependence_hazard)? HAZARD_STALL : RESET; // cache hit both
-						endcase
+			if (!d_cache_hit && BR && !dma_end) begin
+				next_control_state <= INTERRUPT;
+			end
+			else begin
+				case(control_state)
+					RESET : begin
+						if (LWD_dependence_hazard) next_control_state <= HAZARD_STALL;
+						else begin
+							casex ({d_cache_hit, i_cache_hit})
+								2'b0x : next_control_state <= ACCESS_D; // D-cache miss 
+								2'b10 : next_control_state <= (LWD_dependence_hazard)? HAZARD_STALL : ACCESS_I; // I-cache miss
+								2'b11 : next_control_state <= (LWD_dependence_hazard)? HAZARD_STALL : RESET; // cache hit both
+							endcase
+						end
 					end
-				end
-				ACCESS_I : begin
-					if (!d_cache_hit) next_control_state <= BOTH_I_D; // D-cache miss when already access I-cache -> move to BOTH_I_D
-					else if (i_ready) next_control_state <= RESET; // referenced I-cache block is ready -> move to RESET
-					else next_control_state <= ACCESS_I;
-				end
-				ACCESS_D : begin
-					if (!i_cache_hit) next_control_state <= BOTH_D_I; // I-cache miss when already access D-cache -> move to BOTH_D_I
-					else if (d_ready) next_control_state <= RESET; // referenced D-cache block is ready -> move to RESET
-					else next_control_state <= ACCESS_D;
-				end
-				HAZARD_STALL : next_control_state <= (!d_cache_hit)? ACCESS_D : RESET;
-				BOTH_I_D : next_control_state <= (i_ready && d_ready)? RESET : BOTH_I_D; // both referenced I-cache, D-cache blocks are ready -> move to RESET
-				BOTH_D_I : next_control_state <= (i_ready && d_ready)? RESET : BOTH_D_I; // both referenced I-cache, D-cache blocks are ready -> move to RESET
-			endcase
+					ACCESS_I : begin
+						if (!d_cache_hit) next_control_state <= BOTH_I_D; // D-cache miss when already access I-cache -> move to BOTH_I_D
+						else if (i_ready) next_control_state <= RESET; // referenced I-cache block is ready -> move to RESET
+						else next_control_state <= ACCESS_I;
+					end
+					ACCESS_D : begin
+						if (!i_cache_hit) next_control_state <= BOTH_D_I; // I-cache miss when already access D-cache -> move to BOTH_D_I
+						else if (d_ready) next_control_state <= RESET; // referenced D-cache block is ready -> move to RESET
+						else next_control_state <= ACCESS_D;
+					end
+					HAZARD_STALL : next_control_state <= (!d_cache_hit)? ACCESS_D : RESET;
+					BOTH_I_D : next_control_state <= (i_ready && d_ready)? RESET : BOTH_I_D; // both referenced I-cache, D-cache blocks are ready -> move to RESET
+					BOTH_D_I : next_control_state <= (i_ready && d_ready)? RESET : BOTH_D_I; // both referenced I-cache, D-cache blocks are ready -> move to RESET
+					INTERRUPT : next_control_state <= (dma_end)? RESET : INTERRUPT; 
+				endcase
+			end
 		end
 	end
 
