@@ -68,6 +68,8 @@ module hazard_control (
 	reg flush; // flush == 1 only when there is misprediction
 	reg flush_EX; // flush opcode_EX
 	reg isPredict; 
+	reg previous_needFlush_EX;
+	reg needFlush_EX;
 
 	// state parameters, registers
 	parameter RESET = 3'd0;
@@ -106,10 +108,14 @@ module hazard_control (
 
 	// update next_control_state
 	always @(*) begin
-		if (!reset_n) next_control_state <= RESET;
+		if (!reset_n) begin
+			next_control_state <= RESET;
+			needFlush_EX <= 1'd0;
+		end
 		else begin
 			if (!d_cache_hit && BR && dma_counter != 4'd11) begin
-				next_control_state <= INTERRUPT;
+				next_control_state <= INTERRUPT;	
+				if (control_state == ACCESS_I || control_state == BOTH_I_D) needFlush_EX <= 1'd1;
 			end
 			else begin
 				case(control_state)
@@ -144,9 +150,16 @@ module hazard_control (
 
 	// update current control_state according to next_control_state
 	always @(posedge clk, negedge reset_n) begin
-		if (!reset_n) control_state <= RESET;
-		else control_state <= next_control_state;
+		if (!reset_n) begin
+			control_state <= RESET;
+		end
+		else begin
+			control_state <= next_control_state;
+			previous_needFlush_EX <= needFlush_EX;
+		end
+
 	end
+
 
 	// update BTB signals(btbSrc, btbWrite, flush, isPredict)
 	always @(*) begin
@@ -226,6 +239,7 @@ module hazard_control (
 								else begin
 									flush_EX <= 1'd0;
 									{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b11111; // no stall
+									needFlush_EX <= 1'd0;
 								end
 							end
 						endcase
@@ -250,8 +264,9 @@ module hazard_control (
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b00000; // stall all
 						end
 						else if (d_ready) begin
-							flush_EX <= 1'd0;
+							flush_EX <= (previous_needFlush_EX)? 1'd1 : 1'd0;
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b11111; // no stall
+							needFlush_EX <= 1'd0;
 						end
 						else begin
 							flush_EX <= 1'd0;
@@ -280,8 +295,9 @@ module hazard_control (
 					end
 					BOTH_D_I : begin
 						if (i_ready && d_ready) begin
-							flush_EX <= 1'd0;
+							flush_EX <= (previous_needFlush_EX)? 1'd1 : 1'd0;
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b11111; // no stall
+							needFlush_EX <= 1'd0;
 						end
 						else begin
 							flush_EX <= 1'd0;

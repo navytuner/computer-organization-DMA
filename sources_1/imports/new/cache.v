@@ -286,125 +286,214 @@ module cache(
 					endcase
 				end
 			endcase
-
-			if (dma_counter != 4'd12) begin
-				d_writeM <= 1'dz;
-				d_readM <= 1'dz;
-				d_addressM_reg <= `WORD_SIZE'dz;
-				d_outputDataM <= `FETCH_SIZE'dz;
-			end
-			else begin
-				case (d_state)
-					RESET : begin
-						{d_readM, d_writeM} <= 2'b00;
-						d_ready <= 1'd0;
-						if (d_readC) begin
-							next_d_accessCnt <= d_accessCnt + `WORD_SIZE'd1;
-							if (d_tagBank[d_idx] == d_tag && d_valid[d_idx]) begin
-								// D-cache hit -> return D-cache data
-								d_cache_hit <= 1'd1; 
-								next_d_hitCnt <= d_hitCnt + `WORD_SIZE'd1;
+		
+			case (d_state)
+				RESET : begin
+					{d_readM, d_writeM} <= (dma_counter != 4'd12)? 2'dz : 2'b00;
+					d_ready <= 1'd0;
+					if (d_readC) begin
+						next_d_accessCnt <= d_accessCnt + `WORD_SIZE'd1;
+						if (d_tagBank[d_idx] == d_tag && d_valid[d_idx]) begin
+							// D-cache hit -> return D-cache data
+							d_cache_hit <= 1'd1; 
+							next_d_hitCnt <= d_hitCnt + `WORD_SIZE'd1;
+							if (dma_counter != 4'd12) begin
+								d_addressM_reg <= `WORD_SIZE'dz;
+								d_outputDataM <= `FETCH_SIZE'dz;
+							end
+							else begin
 								d_addressM_reg <= d_addressC;
-								case (d_blockOffset)
-									2'd0 : d_outputDataC <= d_dataBank[d_idx][15:0];
-									2'd1 : d_outputDataC <= d_dataBank[d_idx][31:16];
-									2'd2 : d_outputDataC <= d_dataBank[d_idx][47:32];
-									2'd3 : d_outputDataC <= d_dataBank[d_idx][63:48];
-								endcase
+							end
+							case (d_blockOffset)
+								2'd0 : d_outputDataC <= d_dataBank[d_idx][15:0];
+								2'd1 : d_outputDataC <= d_dataBank[d_idx][31:16];
+								2'd2 : d_outputDataC <= d_dataBank[d_idx][47:32];
+								2'd3 : d_outputDataC <= d_dataBank[d_idx][63:48];
+							endcase
+						end
+						else begin
+							d_cache_hit <= 1'd0;
+							next_d_hitCnt <= d_hitCnt;
+							if (dma_counter != 4'd12) begin
+								{d_readM, d_writeM} <= 2'dz;
+								d_addressM_reg <= `WORD_SIZE'dz;
+								d_outputDataM <= `FETCH_SIZE'dz;
 							end
 							else begin
 								d_addressM_reg <= (d_dirty[d_idx])? {d_tagBank[d_idx], d_idx, 2'b00} : d_addressC; // change D-memory address from tag, not cache address directly
-								d_cache_hit <= 1'd0;
-								d_outputDataC <= `WORD_SIZE'dz;
-								next_d_hitCnt <= d_hitCnt;
 							end
-						end
-						else if (d_writeC) begin
-							next_d_accessCnt <= d_accessCnt + `WORD_SIZE'd1;
 							d_outputDataC <= `WORD_SIZE'dz;
-							if (d_tagBank[d_idx] == d_tag && d_valid[d_idx]) begin
-								// D-cache hit -> update d_dataBank, dirty = 1
-								d_cache_hit <= 1'b1; 
-								next_d_hitCnt <= d_hitCnt + `WORD_SIZE'd1;
-								d_addressM_reg <= d_addressC;
+						end
+					end
+					else if (d_writeC) begin
+						next_d_accessCnt <= d_accessCnt + `WORD_SIZE'd1;
+						d_outputDataC <= `WORD_SIZE'dz;
+						if (d_tagBank[d_idx] == d_tag && d_valid[d_idx]) begin
+							// D-cache hit -> update d_dataBank, dirty = 1
+							d_cache_hit <= 1'b1; 
+							next_d_hitCnt <= d_hitCnt + `WORD_SIZE'd1;
+							if (dma_counter != 4'd12) begin
+								{d_readM, d_writeM} <= 2'dz;
+								d_addressM_reg <= `WORD_SIZE'dz;
+								d_outputDataM <= `FETCH_SIZE'dz;
 							end
 							else begin
-								// D-cache miss -> access D-memory
-								d_addressM_reg <= (d_dirty[d_idx])? {d_tagBank[d_idx], d_idx, 2'b00} : d_addressC;
-								d_cache_hit <= 1'b0;
-								next_d_hitCnt <= d_hitCnt;
+								d_addressM_reg <= d_addressC;
 							end
 						end
 						else begin
-							next_d_accessCnt <= d_accessCnt;
-							d_addressM_reg <= d_addressC;
-							d_outputDataC <= `WORD_SIZE'dz;
-							d_cache_hit <= 1'd1;
+							// D-cache miss -> access D-memory
+							if (dma_counter != 4'd12) begin
+								{d_readM, d_writeM} <= 2'dz;
+								d_addressM_reg <= `WORD_SIZE'dz;
+								d_outputDataM <= `FETCH_SIZE'dz;
+							end
+							else begin
+								d_addressM_reg <= (d_dirty[d_idx])? {d_tagBank[d_idx], d_idx, 2'b00} : d_addressC;
+							end
+							d_cache_hit <= 1'b0;
 							next_d_hitCnt <= d_hitCnt;
 						end
 					end
-					READ_M0 : begin
+					else begin
+						next_d_accessCnt <= d_accessCnt;
+						if (dma_counter != 4'd12) begin
+							{d_readM, d_writeM} <= 2'dz;
+							d_addressM_reg <= `WORD_SIZE'dz;
+							d_outputDataM <= `FETCH_SIZE'dz;
+						end
+						else begin
+							d_addressM_reg <= d_addressC;
+						end
+						d_outputDataC <= `WORD_SIZE'dz;
+						d_cache_hit <= 1'd1;
+						next_d_hitCnt <= d_hitCnt;
+					end
+				end
+				READ_M0 : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
+					end
+					else begin
 						d_readM <= 1'd1;
 						d_outputDataM <= `FETCH_SIZE'dz;
 						d_addressM_reg <= d_addressC;
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
 					end
-					READ_M1 : begin
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				READ_M1 : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
+					end
+					else begin
 						d_readM <= 1'd0;
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
 					end
-					READ_M2 : begin
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				READ_M2 : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
 					end
-					READ_M3 : begin
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				READ_M3 : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
 					end
-					FETCH_READY : begin
-						d_ready <= 1'd1;
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
-						// fetch data to datapath
-						case (d_blockOffset)
-							2'd0 : d_outputDataC <= d_dataBank[d_idx][15:0];
-							2'd1 : d_outputDataC <= d_dataBank[d_idx][31:16];
-							2'd2 : d_outputDataC <= d_dataBank[d_idx][47:32];
-							2'd3 : d_outputDataC <= d_dataBank[d_idx][63:48];
-						endcase
-					end 
-					WRITE_M0 : begin
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				FETCH_READY : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
+					end
+					d_ready <= 1'd1;
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+					// fetch data to datapath
+					case (d_blockOffset)
+						2'd0 : d_outputDataC <= d_dataBank[d_idx][15:0];
+						2'd1 : d_outputDataC <= d_dataBank[d_idx][31:16];
+						2'd2 : d_outputDataC <= d_dataBank[d_idx][47:32];
+						2'd3 : d_outputDataC <= d_dataBank[d_idx][63:48];
+					endcase
+				end 
+				WRITE_M0 : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
+					end
+					else begin
 						d_writeM <= 1'd1;
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
 					end
-					WRITE_M1 : begin
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				WRITE_M1 : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
+					end
+					else begin
 						d_writeM <= 1'd0;
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
 					end
-					WRITE_M2 : begin
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				WRITE_M2 : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
 					end
-					WRITE_M3 : begin
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				WRITE_M3 : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
+					end
+					else begin
 						d_outputDataM <= d_dataBank[d_idx]; // transfer data to memory
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
 					end
-					WRITE_READY : begin
-						d_ready <= 1'd1; 
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				WRITE_READY : begin
+					if (dma_counter != 4'd12) begin
+						{d_readM, d_writeM} <= 2'dz;
+						d_addressM_reg <= `WORD_SIZE'dz;
+						d_outputDataM <= `FETCH_SIZE'dz;
 					end
-					INTERRUPT : begin
-						next_d_hitCnt <= d_hitCnt;
-						next_d_accessCnt <= d_accessCnt;
-					end
-				endcase
-			end
+					d_ready <= 1'd1; 
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+				INTERRUPT : begin
+					{d_readM, d_writeM} <= 2'dz;
+					d_addressM_reg <= `WORD_SIZE'dz;
+					d_outputDataM <= `FETCH_SIZE'dz;
+					next_d_hitCnt <= d_hitCnt;
+					next_d_accessCnt <= d_accessCnt;
+				end
+			endcase
 		end
 	end
 endmodule
