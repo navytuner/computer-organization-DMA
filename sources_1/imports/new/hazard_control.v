@@ -103,6 +103,22 @@ module hazard_control (
 	// if control_state is BOTH_I_D or BOTH_D_I -> both_access = 1
 	assign both_access = (control_state == BOTH_I_D || control_state == BOTH_D_I); //  || (control_state == INTERRUPT && !i_cache_hit)
 
+	reg needFlush_EX;
+	reg [`WORD_SIZE-1:0] resetNum_interrupt;
+	always @(*) begin
+		if (control_state == INTERRUPT) needFlush_EX <= 1'd1;
+		else if (resetNum_interrupt >= 2) needFlush_EX <= 1'd0;
+	end
+	always @(posedge clk, negedge reset_n) begin
+		if (!reset_n) resetNum_interrupt <= 1'd0;
+		else begin
+			if (control_state == INTERRUPT) resetNum_interrupt <= 1'd0;
+			else if (control_state == RESET) resetNum_interrupt <= resetNum_interrupt + `WORD_SIZE'd1;
+			else resetNum_interrupt <= resetNum_interrupt;
+		end
+	end
+
+
 	// update next_control_state
 	always @(*) begin
 		if (!reset_n) begin
@@ -240,30 +256,26 @@ module hazard_control (
 						endcase
 					end
 					ACCESS_I : begin
+						flush_EX <= 1'd1;
 						if (!d_cache_hit) begin
-							flush_EX <= 1'd1;
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b00000; // stall all
 						end
 						else if (i_ready) begin
-							flush_EX <= 1'd1; // flush_EX <= 1'd1
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b11111; // no stall
 						end
 						else begin
-							flush_EX <= 1'd1;
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= (!d_cache_hit)? 5'b00000 : 5'b00111; // stall IF, ID
 						end
 					end
 					ACCESS_D : begin 
+						flush_EX <= (needFlush_EX)? 1'd1 : 1'd0;
 						if (!i_cache_hit) begin
-							flush_EX <= 1'd0;
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b00000; // stall all
 						end
 						else if (d_ready) begin
-							flush_EX <= 1'd0;
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b11111; // no stall
 						end
 						else begin
-							flush_EX <= 1'd0;
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b00000; // stall all
 						end
 					end
@@ -289,7 +301,7 @@ module hazard_control (
 					end
 					BOTH_D_I : begin
 						if (i_ready && d_ready) begin
-							flush_EX <= 1'd0;
+							flush_EX <= (needFlush_EX)? 1'd1 : 1'd0;
 							{PCWrite, IDWrite, EXWrite, MWrite, WBWrite} <= 5'b11111; // no stall
 						end
 						else begin
