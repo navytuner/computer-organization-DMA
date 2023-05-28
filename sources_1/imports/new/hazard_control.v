@@ -122,7 +122,10 @@ module hazard_control (
 					end
 				end
 				ACCESS_I : begin
-					if (!d_cache_hit) next_control_state <= BOTH_I_D; // D-cache miss when already access I-cache -> move to BOTH_I_D
+					if (!d_cache_hit) begin
+					   if (BR) next_control_state <= (dma_state == 4'd11)? RESET : INTERRUPT; // D-cache miss when already access I-cache -> move to BOTH_I_D
+					   else next_control_state <= BOTH_I_D;
+                    end
 					else if (i_ready) next_control_state <= RESET; // referenced I-cache block is ready -> move to RESET
 					else next_control_state <= ACCESS_I;
 				end
