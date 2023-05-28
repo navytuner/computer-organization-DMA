@@ -39,7 +39,7 @@ module cache(
 	input both_access, // indicator of the case that there is both I-cache and D-cache access
 	input EXWrite, // EXWrite signal from hazard_control to count cache access
 	input BR, // bus request
-	input [3:0] dma_counter // cpu dma counter
+	input [3:0] dma_state // cpu dma counter
 );
 	reg [`WORD_SIZE-1:0] i_hitCnt; // counter for I-cache hit
 	reg [`WORD_SIZE-1:0] d_hitCnt; // counter for D-cache hit
@@ -139,30 +139,25 @@ module cache(
 					else i_nextState <= RESET;
 				end
 			endcase
-			// update d_nextState
-			if (!d_cache_hit && BR && dma_counter != 4'd11) begin
-				d_nextState <= INTERRUPT;
-			end
-			else begin
-				case (d_state)
-					RESET : begin
-						if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : WRITE_M0; // D-cache miss & dirty -> move to WRITE_M0
-						else if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && !d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : READ_M0; // D-cache miss & not dirty -> move to REAAD_M0
-						else d_nextState <= RESET; // cache hit -> no access memory 
-					end
-					WRITE_M0 : d_nextState <= WRITE_M1;
-					WRITE_M1 : d_nextState <= WRITE_M2;
-					WRITE_M2 : d_nextState <= WRITE_M3;
-					WRITE_M3 : d_nextState <= READ_M0;
-					READ_M0 : d_nextState <= READ_M1;
-					READ_M1 : d_nextState <= READ_M2;
-					READ_M2 : d_nextState <= READ_M3;
-					READ_M3 : d_nextState <= (d_readC)? FETCH_READY : WRITE_READY;
-					FETCH_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET)? FETCH_READY : RESET; // wait until I-cache access is done
-					WRITE_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET)? WRITE_READY : RESET; // wait until I-cache access is done
-					INTERRUPT : d_nextState <= (dma_counter == 4'd11)? RESET : INTERRUPT;
-				endcase
-			end
+			
+			case (d_state)
+				RESET : begin
+					if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : WRITE_M0; // D-cache miss & dirty -> move to WRITE_M0
+					else if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && !d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : READ_M0; // D-cache miss & not dirty -> move to REAAD_M0
+					else d_nextState <= RESET; // cache hit -> no access memory 
+				end
+				WRITE_M0 : d_nextState <= WRITE_M1;
+				WRITE_M1 : d_nextState <= WRITE_M2;
+				WRITE_M2 : d_nextState <= WRITE_M3;
+				WRITE_M3 : d_nextState <= READ_M0;
+				READ_M0 : d_nextState <= READ_M1;
+				READ_M1 : d_nextState <= READ_M2;
+				READ_M2 : d_nextState <= READ_M3;
+				READ_M3 : d_nextState <= (d_readC)? FETCH_READY : WRITE_READY;
+				FETCH_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET)? FETCH_READY : RESET; // wait until I-cache access is done
+				WRITE_READY : d_nextState <= (i_state != FETCH_READY && i_state != RESET)? WRITE_READY : RESET; // wait until I-cache access is done
+				INTERRUPT : d_nextState <= (dma_state == 4'd11)? RESET : INTERRUPT;
+			endcase
 		end
 	end
 
@@ -288,7 +283,7 @@ module cache(
 		
 			case (d_state)
 				RESET : begin
-					{d_readM, d_writeM} <= (dma_counter != 4'd12)? 2'dz : 2'b00;
+					{d_readM, d_writeM} <= 2'd0;
 					d_ready <= 1'd0;
 					if (d_readC) begin
 						next_d_accessCnt <= d_accessCnt + `WORD_SIZE'd1;
@@ -296,13 +291,7 @@ module cache(
 							// D-cache hit -> return D-cache data
 							d_cache_hit <= 1'd1; 
 							next_d_hitCnt <= d_hitCnt + `WORD_SIZE'd1;
-							if (dma_counter != 4'd12) begin
-								d_addressM_reg <= `WORD_SIZE'dz;
-								d_outputDataM <= `FETCH_SIZE'dz;
-							end
-							else begin
-								d_addressM_reg <= d_addressC;
-							end
+							d_addressM_reg <= d_addressC;
 							case (d_blockOffset)
 								2'd0 : d_outputDataC <= d_dataBank[d_idx][15:0];
 								2'd1 : d_outputDataC <= d_dataBank[d_idx][31:16];
@@ -313,14 +302,7 @@ module cache(
 						else begin
 							d_cache_hit <= 1'd0;
 							next_d_hitCnt <= d_hitCnt;
-							if (dma_counter != 4'd12) begin
-								{d_readM, d_writeM} <= 2'dz;
-								d_addressM_reg <= `WORD_SIZE'dz;
-								d_outputDataM <= `FETCH_SIZE'dz;
-							end
-							else begin
-								d_addressM_reg <= (d_dirty[d_idx])? {d_tagBank[d_idx], d_idx, 2'b00} : d_addressC; // change D-memory address from tag, not cache address directly
-							end
+							d_addressM_reg <= (d_dirty[d_idx])? {d_tagBank[d_idx], d_idx, 2'b00} : d_addressC; // change D-memory address from tag, not cache address directly
 							d_outputDataC <= `WORD_SIZE'dz;
 						end
 					end
@@ -331,94 +313,44 @@ module cache(
 							// D-cache hit -> update d_dataBank, dirty = 1
 							d_cache_hit <= 1'b1; 
 							next_d_hitCnt <= d_hitCnt + `WORD_SIZE'd1;
-							if (dma_counter != 4'd12) begin
-								{d_readM, d_writeM} <= 2'dz;
-								d_addressM_reg <= `WORD_SIZE'dz;
-								d_outputDataM <= `FETCH_SIZE'dz;
-							end
-							else begin
-								d_addressM_reg <= d_addressC;
-							end
+							d_addressM_reg <= d_addressC;
 						end
 						else begin
 							// D-cache miss -> access D-memory
-							if (dma_counter != 4'd12) begin
-								{d_readM, d_writeM} <= 2'dz;
-								d_addressM_reg <= `WORD_SIZE'dz;
-								d_outputDataM <= `FETCH_SIZE'dz;
-							end
-							else begin
-								d_addressM_reg <= (d_dirty[d_idx])? {d_tagBank[d_idx], d_idx, 2'b00} : d_addressC;
-							end
+							d_addressM_reg <= (d_dirty[d_idx])? {d_tagBank[d_idx], d_idx, 2'b00} : d_addressC;
 							d_cache_hit <= 1'b0;
 							next_d_hitCnt <= d_hitCnt;
 						end
 					end
 					else begin
 						next_d_accessCnt <= d_accessCnt;
-						if (dma_counter != 4'd12) begin
-							{d_readM, d_writeM} <= 2'dz;
-							d_addressM_reg <= `WORD_SIZE'dz;
-							d_outputDataM <= `FETCH_SIZE'dz;
-						end
-						else begin
-							d_addressM_reg <= d_addressC;
-						end
+						d_addressM_reg <= d_addressC;
 						d_outputDataC <= `WORD_SIZE'dz;
 						d_cache_hit <= 1'd1;
 						next_d_hitCnt <= d_hitCnt;
 					end
 				end
 				READ_M0 : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
-					else begin
-						d_readM <= 1'd1;
-						d_outputDataM <= `FETCH_SIZE'dz;
-						d_addressM_reg <= d_addressC;
-					end
+					d_readM <= 1'd1;
+					d_outputDataM <= `FETCH_SIZE'dz;
+					d_addressM_reg <= d_addressC;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
 				READ_M1 : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
-					else begin
-						d_readM <= 1'd0;
-					end
+					d_readM <= 1'd0;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
 				READ_M2 : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
 				READ_M3 : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
 				FETCH_READY : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
 					d_ready <= 1'd1;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
@@ -431,56 +363,25 @@ module cache(
 					endcase
 				end 
 				WRITE_M0 : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
-					else begin
-						d_writeM <= 1'd1;
-					end
+					d_writeM <= 1'd1;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
 				WRITE_M1 : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
-					else begin
-						d_writeM <= 1'd0;
-					end
+					d_writeM <= 1'd0;
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
 				WRITE_M2 : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
 				WRITE_M3 : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
-					else begin
-						d_outputDataM <= d_dataBank[d_idx]; // transfer data to memory
-					end
+					d_outputDataM <= d_dataBank[d_idx]; // transfer data to memory
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;
 				end
 				WRITE_READY : begin
-					if (dma_counter != 4'd12) begin
-						{d_readM, d_writeM} <= 2'dz;
-						d_addressM_reg <= `WORD_SIZE'dz;
-						d_outputDataM <= `FETCH_SIZE'dz;
-					end
 					d_ready <= 1'd1; 
 					next_d_hitCnt <= d_hitCnt;
 					next_d_accessCnt <= d_accessCnt;

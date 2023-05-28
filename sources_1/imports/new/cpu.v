@@ -27,31 +27,35 @@ module cpu(
 	// for DMA implementation
 	input dma_begin, // begin interrupt
 	input dma_end, // end interrupt
-	output reg BG, // bus granted
+	output BG, // bus granted
 	input BR, // bus request
 	output cmd // command
 );
-	// DMA counter
-	reg [3:0] dma_counter; // 0~11 counter
-	assign cmd = dma_begin;
-
-	// DMA count
-	always @(posedge Clk) begin
-		if (BR && !BG) dma_counter <= 4'd0;
+	reg cmd;
+	reg [3:0] dma_state; // 0~11 state
+	
+	// update cmd
+	always @(*) begin
+		if (!Reset_N) cmd <= 1'd0;
 		else begin
-			if (BG) dma_counter <= dma_counter + 4'd1;
-			else dma_counter <= 4'd12;
-		end
-    end  
-
-	// grant bus
-	always @(posedge Clk, negedge Reset_N) begin
-		if (!Reset_N) BG <= 1'd0;
-		else begin
-			if (BR && dma_counter == 4'd12) BG <= 1'd1;
-			else if (dma_counter == 4'd11) BG <= 1'd0;
+			if (dma_begin) cmd <= 1'd1;
+			else if (dma_end) cmd <= 1'd0;
+			else cmd <= cmd;
 		end
 	end
+
+	// update dma_state
+    always @(posedge Clk) begin
+        if (BG) begin
+            dma_state <= (dma_state == 4'd11)? 4'd12 : dma_state + 4'd1;
+        end
+        else if (cmd) begin
+            dma_state <= 4'd0;
+        end
+        else begin
+            dma_state <= 4'd12;
+        end
+    end
 
     // TODO : Implement your pipelined CPU!
 	// control signal declaration
@@ -248,7 +252,8 @@ module cpu(
 		.forwardSrcB(forwardSrcB),
 		.flush_EX(flush_EX),
 		.BR(BR),
-		.dma_counter(dma_counter)
+		.BG(BG),
+		.dma_state(dma_state)
 	);
 
 	// 4. cache : datapath accesses cache instead of accessing memory directly.
@@ -280,7 +285,7 @@ module cpu(
 		.both_access(both_access),
 		.EXWrite(EXWrite),
 		.BR(BR),
-		.dma_counter(dma_counter)
+		.dma_state(dma_state)
 	);
 
 endmodule

@@ -21,7 +21,7 @@ module DMA (
     input BG, // bus granted signal
     input [4 * `WORD_SIZE - 1 : 0] edata, // data from external device
     input cmd, // command
-    output reg BR, // bus request signal
+    output BR, // bus request signal
     output WRITE, // memory write signal
     output [`WORD_SIZE - 1 : 0] addr, // d_memory address
     output [4 * `WORD_SIZE - 1 : 0] data, // data to write in d_memory
@@ -36,7 +36,6 @@ module DMA (
 
     // DMA counter
     reg [3:0] dma_state; // 0 ~ 11 counter
-    reg [3:0] next_dma_state;
 
     // address, data output register
     reg [`WORD_SIZE-1:0] dma_outputAddr;
@@ -46,33 +45,27 @@ module DMA (
     assign addr = (BG)? dma_outputAddr : `WORD_SIZE'dz;
     assign data = (BG)? dma_outputData : `FETCH_SIZE'dz;
     assign WRITE = (BG && (dma_state == 4'd0 || dma_state == 4'd4 || dma_state == 4'd8))? 1'd1 : 1'dz;
+
+    // BR assign
+    assign BR = cmd;
     
-    // update next_dma_state
-    always @(*) begin
-        if (BG) begin
-            if (dma_state == 4'd0) begin
-                next_dma_state <= 4'd1;
-            end
-            else if (dma_state == 4'd11) begin
-                next_dma_state <= 4'd0;
-            end
-            else begin
-                next_dma_state <= dma_state + 4'd1;
-            end
-        end
-        else begin
-            next_dma_state <= 4'd0;
-        end
-    end
     // update dma_state
     always @(posedge CLK) begin
-        dma_state <= next_dma_state;
+        if (BG) begin
+            dma_state <= (dma_state == 4'd11)? 4'd12 : dma_state + 4'd1;
+        end
+        else if (cmd) begin
+            dma_state <= 4'd0;
+        end
+        else begin
+            dma_state <= 4'd12;
+        end
     end
 
     // update dma_end(interrupt), offset
     always @(posedge CLK) begin
         case(dma_state)
-            4'd0 : begin
+            4'd12 : begin
                 // reset
                 offset <= 2'd0;
                 interrupt <= 1'd0;
@@ -87,11 +80,6 @@ module DMA (
     end
 
     always @(*) begin
-        // bus request
-        if (interrupt || (dma_state == 4'd0 && !cmd)) BR <= 1'd0;
-        else if (cmd) BR <= 1'd1;
-        else BR <= BR;
-
         // output dma data
         case (dma_state)
             4'd0 : begin
