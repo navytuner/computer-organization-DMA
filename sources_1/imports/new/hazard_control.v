@@ -131,7 +131,10 @@ module hazard_control (
 					else if (d_ready) next_control_state <= RESET; // referenced D-cache block is ready -> move to RESET
 					else next_control_state <= ACCESS_D;
 				end
-				HAZARD_STALL : next_control_state <= (!d_cache_hit)? ACCESS_D : RESET;
+				HAZARD_STALL : begin
+					if (!d_cache_hit) next_control_state <= (BR)? INTERRUPT : ACCESS_D;
+					else next_control_state <= RESET;
+				end
 				BOTH_I_D : next_control_state <= (i_ready && d_ready)? RESET : BOTH_I_D; // both referenced I-cache, D-cache blocks are ready -> move to RESET
 				BOTH_D_I : next_control_state <= (i_ready && d_ready)? RESET : BOTH_D_I; // both referenced I-cache, D-cache blocks are ready -> move to RESET
 				INTERRUPT : next_control_state <= (dma_state == 4'd11)? RESET : INTERRUPT; 

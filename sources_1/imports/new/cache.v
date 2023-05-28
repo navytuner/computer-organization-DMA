@@ -150,15 +150,23 @@ module cache(
 				READ_M3 : i_nextState <= FETCH_READY;
 				FETCH_READY : begin
 					// if there is both I-cache and D-cache access, then maintain FETCH_READY state
-					if (both_access && (d_state != FETCH_READY && d_state != WRITE_READY && d_state != RESET)) i_nextState <= FETCH_READY;
+					if (both_access && (d_state != FETCH_READY && d_state != WRITE_READY)) i_nextState <= (d_state == INTERRUPT && dma_state==4'd11)? RESET : FETCH_READY;
 					else i_nextState <= RESET;
 				end
 			endcase
 			
 			case (d_state)
 				RESET : begin
-					if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : WRITE_M0; // D-cache miss & dirty -> move to WRITE_M0
-					else if ((d_readC || d_writeC) && (d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && !d_dirty[d_idx]) d_nextState <= (BR)? INTERRUPT : READ_M0; // D-cache miss & not dirty -> move to REAAD_M0
+					if (d_readC || d_writeC) begin
+						if (BR && !d_cache_hit) begin
+							d_nextState <= (dma_state == 4'd11)? RESET : INTERRUPT;
+						end
+						else begin
+							if ((d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && d_dirty[d_idx]) d_nextState <= WRITE_M0;
+							else if ((d_tagBank[d_idx] != d_tag || !d_valid[d_idx]) && !d_dirty[d_idx]) d_nextState <= READ_M0;
+							else d_nextState <= RESET;
+						end
+					end
 					else d_nextState <= RESET; // cache hit -> no access memory 
 				end
 				WRITE_M0 : d_nextState <= WRITE_M1;
@@ -398,6 +406,7 @@ module cache(
 					next_d_accessCnt <= d_accessCnt;
 				end
 				INTERRUPT : begin
+					// d_ready <= (dma_state == 4'd11)? 1'd1 : 1'd0;
 					{d_readM, d_writeM} <= 2'dz;
 					d_addressM_reg <= `WORD_SIZE'dz;
 					d_outputDataM <= `FETCH_SIZE'dz;
