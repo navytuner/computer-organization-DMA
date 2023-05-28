@@ -56,7 +56,6 @@ module hazard_control (
 	output [1:0] forwardSrcB, // 2nd forward source select signal
 	output flush_EX, // signal for EX stage flush
 	input BR, // bus request signal from DMA controller
-	output BG, // bus granted signal to DMA controller
 	input [3:0] dma_state // cpu DMA counter
 ); 
 	// stage write enable IDWrite
@@ -103,8 +102,6 @@ module hazard_control (
 
 	// if control_state is BOTH_I_D or BOTH_D_I -> both_access = 1
 	assign both_access = (control_state == BOTH_I_D || control_state == BOTH_D_I); //  || (control_state == INTERRUPT && !i_cache_hit)
-
-	assign BG = (control_state == INTERRUPT || (d_cache_hit && ));
 
 	// update next_control_state
 	always @(*) begin

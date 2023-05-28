@@ -36,6 +36,7 @@ module DMA (
 
     // DMA counter
     reg [3:0] dma_state; // 0 ~ 11 counter
+    reg previous_BG;
 
     // address, data output register
     reg [`WORD_SIZE-1:0] dma_outputAddr;
@@ -51,15 +52,13 @@ module DMA (
     
     // update dma_state
     always @(posedge CLK) begin
+        previous_BG <= BG;
         if (BG) begin
-            dma_state <= (dma_state == 4'd11)? 4'd12 : dma_state + 4'd1;
+            if (!previous_BG) dma_state <= 4'd0;
+            else if (interrupt) dma_state <= 4'd12;
+            else dma_state <= dma_state + 4'd1;
         end
-        else if (cmd) begin
-            dma_state <= 4'd0;
-        end
-        else begin
-            dma_state <= 4'd12;
-        end
+        else dma_state <= 4'd12;
     end
 
     // update dma_end(interrupt), offset

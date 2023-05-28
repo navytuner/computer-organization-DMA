@@ -33,6 +33,7 @@ module cpu(
 );
 	reg cmd;
 	reg [3:0] dma_state; // 0~11 state
+	reg previous_BG;
 	
 	// update cmd
 	always @(*) begin
@@ -46,15 +47,13 @@ module cpu(
 
 	// update dma_state
     always @(posedge Clk) begin
+		previous_BG <= BG;
         if (BG) begin
-            dma_state <= (dma_state == 4'd11)? 4'd12 : dma_state + 4'd1;
+            if (!previous_BG) dma_state <= 4'd0;
+            else if (dma_end) dma_state <= 4'd12;
+            else dma_state <= dma_state + 4'd1;
         end
-        else if (cmd) begin
-            dma_state <= 4'd0;
-        end
-        else begin
-            dma_state <= 4'd12;
-        end
+        else dma_state <= 4'd12;
     end
 
     // TODO : Implement your pipelined CPU!
@@ -252,7 +251,6 @@ module cpu(
 		.forwardSrcB(forwardSrcB),
 		.flush_EX(flush_EX),
 		.BR(BR),
-		.BG(BG),
 		.dma_state(dma_state)
 	);
 
@@ -285,6 +283,7 @@ module cpu(
 		.both_access(both_access),
 		.EXWrite(EXWrite),
 		.BR(BR),
+		.BG(BG),
 		.dma_state(dma_state)
 	);
 
