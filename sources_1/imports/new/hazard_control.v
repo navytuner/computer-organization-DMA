@@ -111,7 +111,7 @@ module hazard_control (
 		else begin
 			case(control_state)
 				RESET : begin
-					if (!d_cache_hit && BR) next_control_state <= INTERRUPT;
+					if (!d_cache_hit && BR) next_control_state <= (dma_state == 4'd11)? RESET : INTERRUPT;
 					else if (LWD_dependence_hazard) next_control_state <= HAZARD_STALL;
 					else begin
 						casex ({d_cache_hit, i_cache_hit})
