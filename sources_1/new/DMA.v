@@ -36,7 +36,7 @@ module DMA (
 
     // DMA counter
     reg [3:0] dma_state; // 0 ~ 11 counter
-    reg previous_BG;
+    reg previous_BG; // register to latch previous BG value
 
     // address, data output register
     reg [`WORD_SIZE-1:0] dma_outputAddr;
@@ -47,7 +47,7 @@ module DMA (
     assign data = (BG)? dma_outputData : `FETCH_SIZE'dz;
     assign WRITE = (BG && (dma_state == 4'd0 || dma_state == 4'd4 || dma_state == 4'd8))? 1'd1 : 1'dz;
 
-    // BR assign
+    // assign BR
     assign BR = cmd;
     
     // update dma_state

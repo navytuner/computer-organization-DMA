@@ -129,7 +129,6 @@ module cache(
 			else BG <= 1'd0;
 		end
 	end
-	// assign BG = (BR && (d_state == RESET || d_state == INTERRUPT) && !clk);
 
 	// update i_nextState, d_nextState
 	always @(*) begin

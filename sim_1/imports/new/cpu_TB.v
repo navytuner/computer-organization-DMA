@@ -63,7 +63,6 @@ module cpu_TB();
 	// initialize inputs
 	initial begin
 		clk = 0;		   // set initial clock value	
-		
 		reset_n = 1;	   // generate a LOW pulse for reset_n
 		#(`PERIOD1/4) reset_n = 0;
 		#(`PERIOD1 + `PERIOD1/2) reset_n = 1;
