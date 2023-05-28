@@ -78,6 +78,7 @@ module hazard_control (
 	parameter INTERRUPT = 3'd6;
 	reg [2:0] control_state;
 	reg [2:0] next_control_state;
+	reg [2:0] previous_control_state;
 
 	// checking data dependency
 	wire rs_dependence_EX; wire rs_dependence_M; wire rs_dependence_WB; // indicate whether there is data dependence on rs register
@@ -105,8 +106,9 @@ module hazard_control (
 
 	reg needFlush_EX;
 	reg [`WORD_SIZE-1:0] resetNum_interrupt;
+	
 	always @(*) begin
-		if (control_state == INTERRUPT) needFlush_EX <= 1'd1;
+		if (control_state == INTERRUPT && (previous_control_state == ACCESS_I || previous_control_state == BOTH_I_D)) needFlush_EX <= 1'd1;
 		else if (resetNum_interrupt >= 2) needFlush_EX <= 1'd0;
 	end
 	always @(posedge clk, negedge reset_n) begin
@@ -165,11 +167,12 @@ module hazard_control (
 	always @(posedge clk, negedge reset_n) begin
 		if (!reset_n) begin
 			control_state <= RESET;
+			previous_control_state <= RESET;
 		end
 		else begin
 			control_state <= next_control_state;
+			previous_control_state <= control_state;
 		end
-
 	end
 
 
