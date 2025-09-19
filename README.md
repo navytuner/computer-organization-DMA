@@ -37,7 +37,7 @@ demonstrating practical implementation of theoretical computer architecture conc
 
 <figure>
     <img src="img/structure.jpg">
-    <figcaption>Figure 1: Computer Architecture</figcaption>    
+    <figcaption>Figure 1: Dataflow Diagram</figcaption>    
 </figure>
 <figure>
     <img src="img/memory-hierarchy.png">
