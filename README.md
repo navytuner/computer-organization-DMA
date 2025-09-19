@@ -34,22 +34,24 @@ demonstrating practical implementation of theoretical computer architecture conc
 
 ## Diagrams
 
-<figure>
-    <img src="img/structure.jpg" width="400">
-    <figcaption>Figure 1: Computer Architecture</figcaption>
-</figure>
-<figure>
-    <img src="img/memory-hierarchy.png" width="400">
-    <figcaption>Figure 2: Memory Hierarchy & Cache Design</figcaption>
-</figure>
-<figure>
-    <img src="img/cache-fsm.jpg" width="400">
-    <figcaption>Figure 3: FSM Diagram of Cache</figcaption>
-</figure>
-<figure>
-    <img src="img/hazard-controller-fsm.jpg" width="400">
-    <figcaption>Figure 4: FSM Diagram of Hazard Controller</figcaption>
-</figure>
+<p align="center">
+    <figure>
+        <img src="img/structure.jpg" width="400">
+        <figcaption>Figure 1: Computer Architecture</figcaption>
+    </figure>
+    <figure>
+        <img src="img/memory-hierarchy.png" width="400">
+        <figcaption>Figure 2: Memory Hierarchy & Cache Design</figcaption>
+    </figure>
+    <figure>
+        <img src="img/cache-fsm.jpg" width="400">
+        <figcaption>Figure 3: FSM Diagram of Cache</figcaption>
+    </figure>
+    <figure>
+        <img src="img/hazard-controller-fsm.jpg" width="400">
+        <figcaption>Figure 4: FSM Diagram of Hazard Controller</figcaption>
+    </figure>
+</p>
 
 ---
 
