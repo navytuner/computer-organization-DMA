@@ -16,7 +16,7 @@ The architecture is enhanced with modern performance optimization techniques inc
 - **DMA Controller**: Direct Memory Access for efficient data transfer
 - **Branch Predictor**: Dynamic branch prediction to reduce pipeline stalls
 
-## 📊 Performance Results
+## Performance Results
 
 - **Pipeline Efficiency**: Achieved significant speedup through 5-stage pipelining
 - **Cache Hit Rate**: Optimized cache design for improved memory access patterns
