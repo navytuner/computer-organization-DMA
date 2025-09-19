@@ -37,9 +37,7 @@ demonstrating practical implementation of theoretical computer architecture conc
 
 <figure>
     <img src="img/structure.jpg">
-    <p algin='center'>
-        <figcaption>Figure 1: Computer Architecture</figcaption>
-    </p>
+    <figcaption>Figure 1: Computer Architecture</figcaption>    
 </figure>
 <figure>
     <img src="img/memory-hierarchy.png">
